@@ -36,19 +36,23 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0; // 当前选中的 tab 索引
+  int _refreshKey = 0; // 用于强制刷新趋势页
 
   // 四个页面的列表
-  final List<Widget> _pages = [
-    const HomePage(),
-    const TrendPage(),
-    const ViewPage(),
-    const SettingsPage(),
-  ];
+  List<Widget> get _pages => [
+        const HomePage(),
+        TrendPage(key: ValueKey(_refreshKey)), // 使用 ValueKey 来强制刷新
+        const ViewPage(),
+        const SettingsPage(),
+      ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex], // 显示当前选中的页面
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages, // 使用 IndexedStack 保持页面状态
+      ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed, // 固定类型，确保四个 tab 都能显示
         currentIndex: _currentIndex, // 当前选中的索引
@@ -56,6 +60,10 @@ class _MainPageState extends State<MainPage> {
           // 当点击底部导航栏时，更新当前索引
           setState(() {
             _currentIndex = index;
+            // 如果切换到趋势页，刷新数据
+            if (index == 1) {
+              _refreshKey++;
+            }
           });
         },
         items: const [
