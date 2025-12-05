@@ -5,6 +5,7 @@ import '../utils/card_mapper.dart';
 import '../widgets/mark_card_widget.dart';
 import '../widgets/add_card_bottom_sheet.dart';
 import '../widgets/create_card_dialog.dart';
+import '../widgets/check_in_dialog.dart';
 import '../widgets/home_search_bar.dart';
 import '../widgets/home_filter_bar.dart';
 import '../widgets/empty_state.dart';
@@ -119,17 +120,46 @@ class _HomePageState extends State<HomePage> {
   void _checkInCard(int index) {
     if (index < 0 || index >= _addedCards.length) return;
 
-    setState(() {
-      CardService().checkInCard(index);
-      _addedCards = List.from(CardService().getCards());
-    });
+    final card = _addedCards[index];
+    
+    // 对于需要输入数据的类型，显示输入对话框
+    if (card.cardType == CardType.rating ||
+        card.cardType == CardType.timeRange ||
+        card.cardType == CardType.max ||
+        card.cardType == CardType.min ||
+        card.cardType == CardType.overwrite) {
+      showDialog(
+        context: context,
+        builder: (context) => CheckInDialog(
+          card: card,
+          onCheckIn: (data) {
+            setState(() {
+              CardService().checkInCardWithData(index, data);
+              _addedCards = List.from(CardService().getCards());
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${card.title} 打卡成功！'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          },
+        ),
+      );
+    } else {
+      // 其他类型直接打卡
+      setState(() {
+        CardService().checkInCard(index);
+        _addedCards = List.from(CardService().getCards());
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${_addedCards[index].title} 打卡成功！'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${card.title} 打卡成功！'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
   }
 
   // 删除卡片功能
@@ -316,13 +346,9 @@ class _HomePageState extends State<HomePage> {
                           final cardIndex = _addedCards.indexOf(card);
                           return MarkCardWidget(
                             key: ValueKey(card.title), // 使用卡片标题作为唯一标识
-                            icon: card.icon,
-                            iconColor: card.iconColor,
-                            title: card.title,
-                            badgeIcon: card.badgeIcon,
+                            card: card,
                             onBadgeTap: () => _checkInCard(cardIndex),
                             onLongPress: () => _deleteCard(cardIndex),
-                            lastCheckInDate: card.lastCheckInDate,
                           );
                         }).toList(),
                       ),

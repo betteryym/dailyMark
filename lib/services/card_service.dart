@@ -64,11 +64,118 @@ class CardService {
     _notifyDataChanged();
   }
 
-  // 打卡
+  // 打卡（基础方法，用于累加计数型等简单类型）
   void checkInCard(int index) {
     if (index < 0 || index >= _addedCards.length) return;
     final now = DateTime.now();
     _addedCards[index] = _addedCards[index].addCheckIn(now);
+    _notifyDataChanged();
+  }
+
+  // 打卡（支持不同类型的数据）
+  void checkInCardWithData(int index, Map<String, dynamic>? data) {
+    if (index < 0 || index >= _addedCards.length) return;
+    final card = _addedCards[index];
+    final now = DateTime.now();
+    MarkCard updatedCard;
+
+    switch (card.cardType) {
+      case CardType.rating:
+        // 评分类型：需要 rating (1-5)，以最新的为准（同一天覆盖）
+        if (data == null || data['rating'] == null) return;
+        final rating = data['rating'] as int;
+        if (rating < 1 || rating > 5) return;
+        
+        final newTypeData = Map<String, dynamic>.from(card.typeData);
+        final ratings = (newTypeData['ratings'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        
+        // 移除同一天的旧评分记录（以最新的为准）
+        final dateOnly = DateTime(now.year, now.month, now.day);
+        ratings.removeWhere((r) {
+          final recordDate = r['date'] as DateTime;
+          final recordDateOnly = DateTime(recordDate.year, recordDate.month, recordDate.day);
+          return recordDateOnly == dateOnly;
+        });
+        
+        // 添加新的评分记录
+        ratings.add({
+          'date': now,
+          'rating': rating,
+        });
+        newTypeData['ratings'] = ratings;
+        updatedCard = card.addCheckIn(now).copyWith(typeData: newTypeData);
+        break;
+
+      case CardType.timeRange:
+        // 时间范围类型：需要 startTime 和 endTime
+        if (data == null || data['startTime'] == null || data['endTime'] == null) return;
+        final startTime = data['startTime'] as DateTime;
+        final endTime = data['endTime'] as DateTime;
+        if (endTime.isBefore(startTime)) return;
+        
+        final newTypeData = Map<String, dynamic>.from(card.typeData);
+        final timeRanges = (newTypeData['timeRanges'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        timeRanges.add({
+          'date': now,
+          'startTime': startTime,
+          'endTime': endTime,
+        });
+        newTypeData['timeRanges'] = timeRanges;
+        updatedCard = card.addCheckIn(now).copyWith(typeData: newTypeData);
+        break;
+
+      case CardType.max:
+        // 最大值类型：需要 value
+        if (data == null || data['value'] == null) return;
+        final value = (data['value'] as num).toDouble();
+        final currentMax = card.maxValue;
+        
+        final newTypeData = Map<String, dynamic>.from(card.typeData);
+        if (currentMax == null || value > currentMax) {
+          newTypeData['maxValue'] = value;
+          newTypeData['date'] = now;
+        }
+        updatedCard = card.addCheckIn(now).copyWith(typeData: newTypeData);
+        break;
+
+      case CardType.min:
+        // 最小值类型：需要 value
+        if (data == null || data['value'] == null) return;
+        final value = (data['value'] as num).toDouble();
+        final currentMin = card.minValue;
+        
+        final newTypeData = Map<String, dynamic>.from(card.typeData);
+        if (currentMin == null || value < currentMin) {
+          newTypeData['minValue'] = value;
+          newTypeData['date'] = now;
+        }
+        updatedCard = card.addCheckIn(now).copyWith(typeData: newTypeData);
+        break;
+
+      case CardType.overwrite:
+        // 覆盖原值类型：直接覆盖之前的值
+        final newTypeData = Map<String, dynamic>.from(card.typeData);
+        if (data != null) {
+          if (data['time'] != null) {
+            // 时间类型
+            newTypeData['time'] = data['time'] as DateTime;
+            newTypeData['date'] = now;
+          } else if (data['value'] != null) {
+            // 数值类型
+            newTypeData['value'] = (data['value'] as num).toDouble();
+            newTypeData['date'] = now;
+          }
+        }
+        updatedCard = card.addCheckIn(now).copyWith(typeData: newTypeData);
+        break;
+
+      default:
+        // 其他类型使用基础打卡方法
+        updatedCard = card.addCheckIn(now);
+        break;
+    }
+
+    _addedCards[index] = updatedCard;
     _notifyDataChanged();
   }
 

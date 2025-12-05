@@ -49,18 +49,6 @@ class _TrendPageState extends State<TrendPage> {
     return CardService().getRecordedDaysCount();
   }
 
-  // 获取使用天数
-  int get _usedDaysCount {
-    if (_selectedPeriod == 1) {
-      // 月视图：显示当月使用天数
-      return CardService().getMonthUsedDaysCount(
-        _currentDate.year,
-        _currentDate.month,
-      );
-    }
-    return 0; // 其他视图暂不显示使用天数
-  }
-
   // 获取记录次数（根据周期显示）
   int get _periodCheckInCount {
     if (_selectedPeriod == 1) {

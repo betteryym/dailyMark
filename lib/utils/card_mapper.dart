@@ -30,6 +30,40 @@ class CardMapper {
     '总结': (Icons.summarize, Colors.deepOrange),
   };
 
+  // 卡片名称到类型的映射
+  static final Map<String, CardType> _cardTypeMap = {
+    // 评分等级型
+    '心情': CardType.rating,
+
+    // 时间范围型
+    '早睡': CardType.timeRange,
+
+    // 覆盖原值型（每天只需要记录一次，覆盖昨天的值）
+    '早起': CardType.overwrite,
+
+    // 最大值记录型（记录最佳成绩）
+    '有氧训练': CardType.max,
+
+    // 累加计数型（默认类型，大部分卡片使用）
+    '奶茶': CardType.cumulative,
+    '维生素': CardType.cumulative,
+    '阅读': CardType.cumulative,
+    '冥想': CardType.cumulative,
+    '喝水': CardType.cumulative,
+    '运动': CardType.cumulative,
+    '学习': CardType.cumulative,
+    '写作': CardType.cumulative,
+    '绘画': CardType.cumulative,
+    '音乐': CardType.cumulative,
+    '散步': CardType.cumulative,
+    '瑜伽': CardType.cumulative,
+    '记账': CardType.cumulative,
+    '日记': CardType.cumulative,
+    '复盘': CardType.cumulative,
+    '计划': CardType.cumulative,
+    '总结': CardType.cumulative,
+  };
+
   // 预定义的卡片名称列表
   static final List<String> _cardNames = [
     '心情',
@@ -58,26 +92,72 @@ class CardMapper {
   // 根据名称获取卡片
   static MarkCard getCardFromName(String name) {
     final cardInfo = _cardMap[name];
+    // 获取卡片类型，如果没有映射则使用默认类型
+    final cardType = _cardTypeMap[name] ?? CardType.cumulative;
+
     if (cardInfo != null) {
       // 如果名称在映射表中，使用映射的图标和颜色
       return MarkCard(
         title: name,
         icon: cardInfo.$1,
         iconColor: cardInfo.$2,
-        badgeIcon: Icons.add,
-        cardType: CardType.cumulative, // 默认累加计数型
+        badgeIcon: CardTypeHelper.getCheckInIcon(cardType, name),
+        cardType: cardType,
       );
     } else {
       // 自定义卡片：根据文字内容智能匹配图标
       final matchedIcon = matchIconFromName(name);
+      // 尝试根据关键词匹配类型
+      final matchedType = _matchCardTypeFromName(name);
       return MarkCard(
         title: name,
         icon: matchedIcon.$1,
         iconColor: matchedIcon.$2,
-        badgeIcon: Icons.add,
-        cardType: CardType.cumulative, // 默认累加计数型
+        badgeIcon: CardTypeHelper.getCheckInIcon(matchedType, name),
+        cardType: matchedType,
       );
     }
+  }
+
+  // 根据名称关键词匹配卡片类型
+  static CardType _matchCardTypeFromName(String name) {
+    final lowerName = name.toLowerCase();
+
+    // 评分类型关键词
+    if (lowerName.contains('心情') ||
+        lowerName.contains('情绪') ||
+        lowerName.contains('感受')) {
+      return CardType.rating;
+    }
+
+    // 时间范围类型关键词
+    if (lowerName.contains('早睡') ||
+        lowerName.contains('睡觉') ||
+        lowerName.contains('睡眠') ||
+        lowerName.contains('休息')) {
+      return CardType.timeRange;
+    }
+
+    // 覆盖原值类型关键词
+    if (lowerName.contains('早起') || lowerName.contains('起床')) {
+      return CardType.overwrite;
+    }
+
+    // 最大值类型关键词
+    if (lowerName.contains('最大') ||
+        lowerName.contains('最高') ||
+        lowerName.contains('最佳') ||
+        lowerName.contains('记录')) {
+      return CardType.max;
+    }
+
+    // 最小值类型关键词
+    if (lowerName.contains('最小') || lowerName.contains('最低')) {
+      return CardType.min;
+    }
+
+    // 默认累加计数型
+    return CardType.cumulative;
   }
 
   // 根据名称、图标和颜色创建卡片（支持自定义）
@@ -91,7 +171,7 @@ class CardMapper {
       title: name,
       icon: icon,
       iconColor: color,
-      badgeIcon: Icons.add,
+      badgeIcon: CardTypeHelper.getCheckInIcon(cardType, name),
       cardType: cardType,
     );
   }
