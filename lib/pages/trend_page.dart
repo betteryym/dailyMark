@@ -6,7 +6,6 @@ import '../widgets/stat_card.dart';
 import '../widgets/period_selector.dart';
 import '../widgets/date_range_selector.dart';
 import '../widgets/activity_item.dart';
-import '../widgets/calendar_view.dart';
 
 // 趋势页
 class TrendPage extends StatefulWidget {
@@ -38,14 +37,40 @@ class _TrendPageState extends State<TrendPage> {
     return CardService().getCards();
   }
 
-  // 获取总记录次数
-  int get _totalCheckInCount {
-    return CardService().getTotalCheckInCount();
-  }
-
   // 获取记录天数
   int get _recordedDaysCount {
+    if (_selectedPeriod == 1) {
+      // 月视图：显示当月记录天数
+      return CardService().getMonthRecordedDaysCount(
+        _currentDate.year,
+        _currentDate.month,
+      );
+    }
     return CardService().getRecordedDaysCount();
+  }
+
+  // 获取使用天数
+  int get _usedDaysCount {
+    if (_selectedPeriod == 1) {
+      // 月视图：显示当月使用天数
+      return CardService().getMonthUsedDaysCount(
+        _currentDate.year,
+        _currentDate.month,
+      );
+    }
+    return 0; // 其他视图暂不显示使用天数
+  }
+
+  // 获取记录次数（根据周期显示）
+  int get _periodCheckInCount {
+    if (_selectedPeriod == 1) {
+      // 月视图：显示当月记录次数
+      return CardService().getMonthCheckInCount(
+        _currentDate.year,
+        _currentDate.month,
+      );
+    }
+    return CardService().getTotalCheckInCount();
   }
 
   // 获取当前周期的开始日期
@@ -126,25 +151,17 @@ class _TrendPageState extends State<TrendPage> {
               child: Row(
                 children: [
                   Expanded(
-                    child: StatCard(value: '${_activities.length}个', label: '事件总数'),
+                    child: StatCard(
+                      value: '$_periodCheckInCount次',
+                      label: '记录次数',
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: StatCard(value: '$_totalCheckInCount次', label: '记录次数'),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: StatCard(value: '0天', label: '使用天数'),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(value: '$_recordedDaysCount天', label: '记录天数'),
+                    child: StatCard(
+                      value: '$_recordedDaysCount天',
+                      label: '记录天数',
+                    ),
                   ),
                 ],
               ),
@@ -169,9 +186,23 @@ class _TrendPageState extends State<TrendPage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: _selectedPeriod == 1
-                    ? CalendarView(
-                        currentDate: _currentDate,
-                        activities: _activities,
+                    ? GridView.builder(
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 4, // 再缩小50%：8 * 0.5 = 4
+                          childAspectRatio: 0.85,
+                        ),
+                        itemCount: _activities.length,
+                        itemBuilder: (context, index) {
+                          return ActivityItem(
+                            activity: _activities[index],
+                            currentDate: _currentDate,
+                            selectedPeriod: _selectedPeriod,
+                            startDate: _startDate,
+                          );
+                        },
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),

@@ -8,6 +8,7 @@ class MarkCardWidget extends StatelessWidget {
   final String title;
   final IconData badgeIcon;
   final VoidCallback? onBadgeTap; // 右上角图标点击回调
+  final VoidCallback? onLongPress; // 长按回调（用于删除）
   final DateTime? lastCheckInDate; // 最后打卡时间
 
   const MarkCardWidget({
@@ -17,25 +18,28 @@ class MarkCardWidget extends StatelessWidget {
     required this.title,
     required this.badgeIcon,
     this.onBadgeTap,
+    this.onLongPress,
     this.lastCheckInDate,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade100,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Stack(
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade100,
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Stack(
         children: [
           // 主要内容区域
           Padding(
@@ -107,6 +111,7 @@ class MarkCardWidget extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

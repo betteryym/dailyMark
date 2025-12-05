@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/card_mapper.dart';
 
 // 添加卡片底部表单
 class AddCardBottomSheet extends StatefulWidget {
@@ -6,6 +7,9 @@ class AddCardBottomSheet extends StatefulWidget {
   final List<String> addedCards; // 已添加的卡片列表，用于判断是否显示
   final Function(String) onAddNewCard;
   final Function(String) onSelectCard; // 选择卡片时的回调
+  final Function(String, IconData, Color)? onSelectCustomCard; // 选择自定义卡片时的回调
+  final Function(String)? onDeleteCard; // 删除卡片时的回调
+  final VoidCallback? onCreateNewCard; // 新建卡片时的回调
 
   const AddCardBottomSheet({
     super.key,
@@ -13,6 +17,9 @@ class AddCardBottomSheet extends StatefulWidget {
     required this.addedCards,
     required this.onAddNewCard,
     required this.onSelectCard,
+    this.onSelectCustomCard,
+    this.onDeleteCard,
+    this.onCreateNewCard,
   });
 
   @override
@@ -20,10 +27,7 @@ class AddCardBottomSheet extends StatefulWidget {
 }
 
 class _AddCardBottomSheetState extends State<AddCardBottomSheet> {
-  final TextEditingController _textController = TextEditingController();
-  final FocusNode _focusNode = FocusNode();
   late List<String> _availableCards; // 使用本地状态管理列表
-  ScrollController? _scrollController; // 保存滚动控制器引用
 
   @override
   void initState() {
@@ -46,47 +50,7 @@ class _AddCardBottomSheetState extends State<AddCardBottomSheet> {
 
   @override
   void dispose() {
-    _textController.dispose();
-    _focusNode.dispose();
     super.dispose();
-  }
-
-  void _addNewCard() {
-    final newCardName = _textController.text.trim();
-    if (newCardName.isNotEmpty) {
-      // 检查是否已存在
-      if (_availableCards.contains(newCardName)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('卡片 "$newCardName" 已存在'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-        return;
-      }
-      
-      // 更新本地状态
-      setState(() {
-        _availableCards.add(newCardName);
-      });
-      
-      // 通知父组件
-      widget.onAddNewCard(newCardName);
-      _textController.clear();
-      // 收起键盘
-      _focusNode.unfocus();
-      
-      // 滚动到底部显示新添加的项
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted && _scrollController != null && _scrollController!.hasClients) {
-          _scrollController!.animateTo(
-            _scrollController!.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    }
   }
 
   @override
@@ -102,8 +66,6 @@ class _AddCardBottomSheetState extends State<AddCardBottomSheet> {
         maxChildSize: 0.9,
         expand: false,
         builder: (context, scrollController) {
-          // 保存滚动控制器引用
-          _scrollController = scrollController;
           return Column(
             children: [
               // 拖拽指示器
@@ -116,128 +78,154 @@ class _AddCardBottomSheetState extends State<AddCardBottomSheet> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // 标题
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Text(
-                  '添加卡片',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+              // 标题和新建卡片按钮
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      '添加卡片',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: widget.onCreateNewCard,
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('新建卡片'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.black,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              // 卡片列表
+              // 卡片列表（网格布局，每行5个）
               Expanded(
-                child: ListView.builder(
+                child: GridView.builder(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _availableCards.length + 1, // +1 用于添加新选项的行
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5, // 每行5个
+                    crossAxisSpacing: 8, // 列间距
+                    mainAxisSpacing: 8, // 行间距
+                    childAspectRatio: 0.75, // 宽高比
+                  ),
+                  itemCount: _availableCards.length,
                   itemBuilder: (context, index) {
-                    // 最后一行：添加新选项
-                    if (index == _availableCards.length) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8, bottom: 20),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _textController,
-                                focusNode: _focusNode,
-                                decoration: InputDecoration(
-                                  hintText: '输入新卡片名称',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                ),
-                                onSubmitted: (_) => _addNewCard(),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: _addNewCard,
-                              icon: const Icon(Icons.add_circle),
-                              color: Colors.black,
-                              iconSize: 32,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    // 普通列表项
                     final cardName = _availableCards[index];
                     final isAdded = widget.addedCards.contains(cardName);
+                    // 获取卡片的图标和颜色
+                    final cardInfo = CardMapper.matchIconFromName(cardName);
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: InkWell(
-                        onTap: isAdded
-                            ? null
-                            : () {
-                                widget.onSelectCard(cardName);
-                              },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
+                    return InkWell(
+                      onTap: isAdded
+                          ? null
+                          : () {
+                              widget.onSelectCard(cardName);
+                            },
+                      onLongPress: widget.onDeleteCard != null
+                          ? () {
+                              // 显示确认对话框
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext dialogContext) {
+                                  return AlertDialog(
+                                    title: const Text('删除卡片'),
+                                    content: Text('确定要从候选列表中删除 "$cardName" 吗？'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(dialogContext).pop(),
+                                        child: const Text('取消'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.of(dialogContext).pop();
+                                          widget.onDeleteCard!(cardName);
+                                          setState(() {
+                                            _availableCards.remove(cardName);
+                                          });
+                                        },
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                        ),
+                                        child: const Text('删除'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            }
+                          : null,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isAdded
+                              ? Colors.grey.shade100
+                              : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
                             color: isAdded
-                                ? Colors.grey.shade100
-                                : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isAdded
-                                  ? Colors.grey.shade300
-                                  : Colors.grey.shade200,
-                              width: 1,
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade200,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // 图标
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  cardInfo.$1,
+                                  color: isAdded
+                                      ? Colors.grey.shade400
+                                      : cardInfo.$2,
+                                  size: 32,
+                                ),
+                                if (isAdded)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.grey,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 12,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  cardName,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: isAdded
-                                        ? Colors.grey.shade500
-                                        : Colors.black,
-                                  ),
+                            const SizedBox(height: 8),
+                            // 名称
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Text(
+                                cardName,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isAdded
+                                      ? Colors.grey.shade500
+                                      : Colors.black,
+                                  fontWeight: FontWeight.w500,
                                 ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              if (isAdded)
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 8),
-                                  child: Icon(
-                                    Icons.check_circle,
-                                    color: Colors.grey,
-                                    size: 20,
-                                  ),
-                                ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     );

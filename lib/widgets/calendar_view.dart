@@ -94,28 +94,22 @@ class CalendarView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          // 活动图标（显示前3个活动的小图标，已打卡的显示打钩）
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: activities.take(3).map((activity) {
-              final isChecked = activity.isCheckedIn(date);
+          // 活动颜色块（只显示已打卡的卡片颜色）
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 4,
+            runSpacing: 2,
+            children: activities
+                .where((activity) => activity.isCheckedIn(date)) // 只显示已打卡的
+                .take(3) // 最多显示3个
+                .map((activity) {
               return Container(
-                width: 6,
-                height: 6,
-                margin: const EdgeInsets.symmetric(horizontal: 1),
+                width: 16,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: isChecked
-                      ? activity.iconColor
-                      : activity.iconColor.withOpacity(0.3),
-                  shape: BoxShape.circle,
+                  color: activity.iconColor,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: isChecked
-                    ? const Icon(
-                        Icons.check,
-                        size: 4,
-                        color: Colors.white,
-                      )
-                    : null,
               );
             }).toList(),
           ),

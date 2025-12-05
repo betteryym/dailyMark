@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/mark_card.dart';
+import '../models/card_type.dart';
 import '../utils/card_mapper.dart';
 import '../widgets/mark_card_widget.dart';
 import '../widgets/add_card_bottom_sheet.dart';
+import '../widgets/create_card_dialog.dart';
 import '../widgets/home_search_bar.dart';
 import '../widgets/home_filter_bar.dart';
 import '../widgets/empty_state.dart';
@@ -130,6 +132,49 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 删除卡片功能
+  void _deleteCard(int index) {
+    if (index < 0 || index >= _addedCards.length) return;
+
+    final cardTitle = _addedCards[index].title;
+
+    // 显示确认对话框
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('删除卡片'),
+          content: Text('确定要删除卡片 "$cardTitle" 吗？此操作不可撤销。'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() {
+                  CardService().deleteCard(index);
+                  _addedCards = List.from(CardService().getCards());
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('已删除卡片 "$cardTitle"'),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // 显示添加卡片对话框
   void _showAddCardDialog() {
     showModalBottomSheet(
@@ -148,6 +193,85 @@ class _HomePageState extends State<HomePage> {
           onSelectCard: (String cardName) {
             _addCardToHome(cardName);
             Navigator.pop(context); // 关闭底部表单
+          },
+          onSelectCustomCard: (String cardName, IconData icon, Color color) {
+            _addCustomCardToHome(cardName, icon, color);
+          },
+          onDeleteCard: (String cardName) {
+            // 从候选列表中删除卡片
+            setState(() {
+              _availableCards.remove(cardName);
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('已从候选列表中删除 "$cardName"'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          },
+          onCreateNewCard: () {
+            Navigator.pop(context); // 关闭当前底部表单
+            _showCreateCardDialog(); // 显示新建卡片弹窗
+          },
+        );
+      },
+    );
+  }
+
+  // 添加自定义卡片到首页
+  void _addCustomCardToHome(String cardName, IconData icon, Color color) {
+    // 检查是否已存在
+    if (_addedCards.any((card) => card.title == cardName)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('卡片 "$cardName" 已存在'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      CardService().addCustomCard(cardName, icon, color);
+      _addedCards = List.from(CardService().getCards());
+    });
+  }
+
+  // 显示新建卡片弹窗
+  void _showCreateCardDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return CreateCardDialog(
+          onCreateCard: (String cardName, IconData icon, Color color, CardType cardType) {
+            // 检查是否已存在
+            if (_addedCards.any((card) => card.title == cardName)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('卡片 "$cardName" 已存在'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+              return;
+            }
+
+            setState(() {
+              CardService().addCustomCardWithType(cardName, icon, color, cardType);
+              _addedCards = List.from(CardService().getCards());
+              // 将新卡片添加到候选列表
+              if (!_availableCards.contains(cardName)) {
+                _availableCards.add(cardName);
+              }
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('卡片 "$cardName" 创建成功！'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
           },
         );
       },
@@ -197,6 +321,7 @@ class _HomePageState extends State<HomePage> {
                             title: card.title,
                             badgeIcon: card.badgeIcon,
                             onBadgeTap: () => _checkInCard(cardIndex),
+                            onLongPress: () => _deleteCard(cardIndex),
                             lastCheckInDate: card.lastCheckInDate,
                           );
                         }).toList(),

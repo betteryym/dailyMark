@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'card_type.dart';
 
 // 卡片数据模型
 class MarkCard {
@@ -6,6 +7,7 @@ class MarkCard {
   final IconData icon;
   final Color iconColor;
   final IconData badgeIcon;
+  final CardType cardType; // 卡片类型
   final List<DateTime> checkInDates; // 打卡日期列表
 
   MarkCard({
@@ -13,6 +15,7 @@ class MarkCard {
     required this.icon,
     required this.iconColor,
     required this.badgeIcon,
+    required this.cardType,
     List<DateTime>? checkInDates,
   }) : checkInDates = checkInDates ?? [];
 
@@ -22,6 +25,7 @@ class MarkCard {
     IconData? icon,
     Color? iconColor,
     IconData? badgeIcon,
+    CardType? cardType,
     List<DateTime>? checkInDates,
   }) {
     return MarkCard(
@@ -29,6 +33,7 @@ class MarkCard {
       icon: icon ?? this.icon,
       iconColor: iconColor ?? this.iconColor,
       badgeIcon: badgeIcon ?? this.badgeIcon,
+      cardType: cardType ?? this.cardType,
       checkInDates: checkInDates ?? this.checkInDates,
     );
   }
